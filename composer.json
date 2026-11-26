@@ -17,11 +17,12 @@
     },
     "minimum-stability": "stable",
     "require-dev": {
-        "nyholm/psr7": "^1.8",
+        "nyholm/psr7": "^1.8.2",
         "phpunit/phpunit": "^12.0",
         "phpstan/phpstan": "^2.1",
         "phpbench/phpbench": "^1.7",
-        "infection/infection": "^0.35.4"
+        "infection/infection": "^0.35.4",
+        "psr/http-factory": "^1.1"
     },
     "scripts": {
         "test": "@php vendor/bin/phpunit --configuration phpunit.xml.dist",
