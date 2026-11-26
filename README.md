@@ -37,3 +37,9 @@ When the remote address is not trusted, forwarding headers are ignored and strip
 ## Related Packages
 
 `componenta/http-throttle-middleware` uses `client_ip` when it is available.
+
+## Forwarding trust contract
+
+The immediate peer must be explicitly trusted and must sanitize incoming forwarding headers. Configure trusted proxy addresses narrowly. In `Forwarded` mode the client and URI metadata come from the same element at the trust boundary; unknown or malformed hops stop the walk. In `All` mode, a present `Forwarded` header selects that family exclusively, even if malformed. For `X-Forwarded-*`, singleton URI headers must be overwritten by the immediate trusted proxy; multi-value URI headers must align with the `X-Forwarded-For` chain. Misaligned lists are ignored. Only HTTP(S) schemes and valid authorities are accepted. Header values are bounded to 16 KiB and chains to 128 hops. Missing URI metadata preserves the original URI. Validate the application's allowed host separately.
+
+Run regression tests with `composer test`.
