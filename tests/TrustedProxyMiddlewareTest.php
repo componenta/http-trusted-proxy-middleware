@@ -71,6 +71,42 @@ final class TrustedProxyMiddlewareTest extends TestCase
         self::assertSame('192.0.2.10', $request->getAttribute('client_ip'));
     }
 
+    public function testMappedPeerMatchesTrustedIpv4Network(): void
+    {
+        $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10'], '::ffff:a00:1');
+        self::assertSame('192.0.2.10', $request->getAttribute('client_ip'));
+    }
+
+    public function testMalformedXForwardedHopStopsTrustTraversal(): void
+    {
+        $request = $this->run(TrustedHeaders::XForwarded, [
+            'X-Forwarded-For' => '203.0.113.99, invalid, 10.0.0.2',
+            'X-Forwarded-Host' => 'untrusted.test, untrusted.test, internal.test',
+        ]);
+        self::assertSame('10.0.0.2', $request->getAttribute('client_ip'));
+        self::assertSame('internal.test', $request->getUri()->getHost());
+    }
+
+    public function testOverlongChainIsIgnored(): void
+    {
+        $request = $this->run(TrustedHeaders::XForwarded, [
+            'X-Forwarded-For' => implode(',', array_fill(0, 129, '192.0.2.10')),
+            'X-Forwarded-Host' => 'untrusted.test',
+        ]);
+        self::assertSame('10.0.0.1', $request->getAttribute('client_ip'));
+        self::assertSame('internal.test', $request->getUri()->getHost());
+    }
+
+    public function testMisalignedMetadataIsIgnored(): void
+    {
+        $request = $this->run(TrustedHeaders::XForwarded, [
+            'X-Forwarded-For' => '192.0.2.10, 10.0.0.2',
+            'X-Forwarded-Host' => 'untrusted.test, public.test, internal.test',
+        ]);
+        self::assertSame('192.0.2.10', $request->getAttribute('client_ip'));
+        self::assertSame('internal.test', $request->getUri()->getHost());
+    }
+
     public function testMalformedPortIsNotPartiallyParsed(): void
     {
         $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-Port' => '443junk']);
