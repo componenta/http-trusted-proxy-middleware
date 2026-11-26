@@ -14,7 +14,9 @@ final readonly class TrustedNetworks
     {
         $networks = [];
         foreach ($configuration->effectiveProxies() as $entry) {
-            [$address, $prefix] = array_pad(explode('/', $entry, 2), 2, null);
+            $parts = explode('/', $entry, 2);
+            $address = $parts[0];
+            $prefix = $parts[1] ?? null;
             $binary = inet_pton($address);
             if ($binary === false) {
                 throw new \InvalidArgumentException('Invalid trusted network.');

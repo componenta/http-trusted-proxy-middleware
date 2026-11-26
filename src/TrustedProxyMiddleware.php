@@ -53,7 +53,7 @@ final readonly class TrustedProxyMiddleware implements MiddlewareInterface
                 return [$peer, []];
             }
             $client = $peer;
-            $boundary = null;
+            $boundary = count($elements) - 1;
             for ($i = count($elements) - 1; $i >= 0; --$i) {
                 $ip = ForwardedParser::nodeIp($elements[$i]['for'] ?? '');
                 if ($ip === null) {
@@ -66,7 +66,7 @@ final readonly class TrustedProxyMiddleware implements MiddlewareInterface
                     break;
                 }
             }
-            return [$client, $boundary === null ? [] : array_intersect_key($elements[$boundary], ['host' => true, 'proto' => true])];
+            return [$client, array_intersect_key($elements[$boundary], ['host' => true, 'proto' => true])];
         }
         if ($this->config->trustedHeaders === TrustedHeaders::Forwarded) {
             return [$peer, []];

@@ -29,22 +29,28 @@ final readonly class TrustedProxyConfiguration
         'fe80::/10',
     ];
 
+    /** @var list<string> */
+    public array $trustedProxies;
+
     /**
-     * @param list<string>   $trustedProxies       IP addresses or CIDR ranges of trusted proxies.
+     * @param array<array-key, mixed> $trustedProxies       IP addresses or CIDR ranges of trusted proxies.
      * @param TrustedHeaders $trustedHeaders        Which forwarding header format to trust.
      * @param bool           $trustPrivateNetworks  Implicitly trust RFC 1918/4193 private ranges.
      */
     public function __construct(
-        public array $trustedProxies = [],
+        array $trustedProxies = [],
         public TrustedHeaders $trustedHeaders = TrustedHeaders::XForwarded,
         public bool $trustPrivateNetworks = false,
     ) {
-        foreach ($this->trustedProxies as $entry) {
+        $normalized = [];
+        foreach ($trustedProxies as $entry) {
             if (!is_string($entry)) {
                 throw new \InvalidArgumentException('Trusted proxy entries must be strings.');
             }
             $this->validateEntry($entry);
+            $normalized[] = $entry;
         }
+        $this->trustedProxies = $normalized;
     }
 
     /**
