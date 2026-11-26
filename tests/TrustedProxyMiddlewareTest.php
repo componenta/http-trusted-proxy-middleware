@@ -17,7 +17,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
 {
     public function testForwardedUsesOneTrustBoundaryAndUnderstandsQuotedStrings(): void
     {
-        $request = $this->run(TrustedHeaders::Forwarded, [
+        $request = $this->processRequest(TrustedHeaders::Forwarded, [
             'Forwarded' => 'for=203.0.113.99;host=untrusted.test, for=192.0.2.10;host="public.test:8443";proto=https;ext="a,b;c", for=10.0.0.2;host=internal.test',
         ]);
         self::assertSame('192.0.2.10', $request->getAttribute('client_ip'));
@@ -27,7 +27,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testUnknownHopDoesNotExposeEarlierClaims(): void
     {
-        $request = $this->run(TrustedHeaders::Forwarded, [
+        $request = $this->processRequest(TrustedHeaders::Forwarded, [
             'Forwarded' => 'for=203.0.113.99;host=untrusted.test, for=unknown',
         ]);
         self::assertSame('10.0.0.1', $request->getAttribute('client_ip'));
@@ -36,7 +36,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testNonstandardForwardedPortExtensionIsIgnored(): void
     {
-        $request = $this->run(TrustedHeaders::Forwarded, [
+        $request = $this->processRequest(TrustedHeaders::Forwarded, [
             'Forwarded' => 'for=192.0.2.10;host="public.test:8443";proto=https;port=4444',
         ]);
         self::assertSame(8443, $request->getUri()->getPort());
@@ -44,13 +44,13 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testMissingPortPreservesOriginalUri(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10']);
+        $request = $this->processRequest(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10']);
         self::assertSame(8080, $request->getUri()->getPort());
     }
 
     public function testAllDoesNotFallBackToOtherFamilyForMissingFields(): void
     {
-        $request = $this->run(TrustedHeaders::All, [
+        $request = $this->processRequest(TrustedHeaders::All, [
             'Forwarded' => 'for=192.0.2.10',
             'X-Forwarded-Host' => 'untrusted.test',
         ]);
@@ -59,7 +59,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testUntrustedPeerCannotSupplyForwardingHeaders(): void
     {
-        $request = $this->run(TrustedHeaders::All, ['Forwarded' => 'for=192.0.2.10;host=untrusted.test'], '203.0.113.10');
+        $request = $this->processRequest(TrustedHeaders::All, ['Forwarded' => 'for=192.0.2.10;host=untrusted.test'], '203.0.113.10');
         self::assertSame('203.0.113.10', $request->getAttribute('client_ip'));
         self::assertSame('internal.test', $request->getUri()->getHost());
         self::assertFalse($request->hasHeader('Forwarded'));
@@ -67,19 +67,19 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testEquivalentIpv6AddressIsTrusted(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10'], '2001:0db8:0:0:0:0:0:1');
+        $request = $this->processRequest(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10'], '2001:0db8:0:0:0:0:0:1');
         self::assertSame('192.0.2.10', $request->getAttribute('client_ip'));
     }
 
     public function testMappedPeerMatchesTrustedIpv4Network(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10'], '::ffff:a00:1');
+        $request = $this->processRequest(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10'], '::ffff:a00:1');
         self::assertSame('192.0.2.10', $request->getAttribute('client_ip'));
     }
 
     public function testMalformedXForwardedHopStopsTrustTraversal(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, [
+        $request = $this->processRequest(TrustedHeaders::XForwarded, [
             'X-Forwarded-For' => '203.0.113.99, invalid, 10.0.0.2',
             'X-Forwarded-Host' => 'untrusted.test, untrusted.test, internal.test',
         ]);
@@ -89,7 +89,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testOverlongChainIsIgnored(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, [
+        $request = $this->processRequest(TrustedHeaders::XForwarded, [
             'X-Forwarded-For' => implode(',', array_fill(0, 129, '192.0.2.10')),
             'X-Forwarded-Host' => 'untrusted.test',
         ]);
@@ -99,7 +99,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testMisalignedMetadataIsIgnored(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, [
+        $request = $this->processRequest(TrustedHeaders::XForwarded, [
             'X-Forwarded-For' => '192.0.2.10, 10.0.0.2',
             'X-Forwarded-Host' => 'untrusted.test, public.test, internal.test',
         ]);
@@ -109,13 +109,13 @@ final class TrustedProxyMiddlewareTest extends TestCase
 
     public function testMalformedPortIsNotPartiallyParsed(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-Port' => '443junk']);
+        $request = $this->processRequest(TrustedHeaders::XForwarded, ['X-Forwarded-Port' => '443junk']);
         self::assertSame(8080, $request->getUri()->getPort());
     }
 
     public function testXForwardedListsAreAlignedAtTrustBoundary(): void
     {
-        $request = $this->run(TrustedHeaders::XForwarded, [
+        $request = $this->processRequest(TrustedHeaders::XForwarded, [
             'X-Forwarded-For' => '203.0.113.99, 192.0.2.10, 10.0.0.2',
             'X-Forwarded-Host' => 'untrusted.test, public.test, internal.test',
             'X-Forwarded-Proto' => 'http, https, http',
@@ -125,7 +125,7 @@ final class TrustedProxyMiddlewareTest extends TestCase
     }
 
     /** @param array<string, string> $headers */
-    private function run(TrustedHeaders $format, array $headers, string $peer = '10.0.0.1'): ServerRequestInterface
+    private function processRequest(TrustedHeaders $format, array $headers, string $peer = '10.0.0.1'): ServerRequestInterface
     {
         $factory = new Psr17Factory();
         $request = $factory->createServerRequest('GET', 'http://internal.test:8080/', ['REMOTE_ADDR' => $peer]);
