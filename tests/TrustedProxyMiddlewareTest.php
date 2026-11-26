@@ -34,6 +34,14 @@ final class TrustedProxyMiddlewareTest extends TestCase
         self::assertSame('http://internal.test:8080/', (string) $request->getUri());
     }
 
+    public function testNonstandardForwardedPortExtensionIsIgnored(): void
+    {
+        $request = $this->run(TrustedHeaders::Forwarded, [
+            'Forwarded' => 'for=192.0.2.10;host="public.test:8443";proto=https;port=4444',
+        ]);
+        self::assertSame(8443, $request->getUri()->getPort());
+    }
+
     public function testMissingPortPreservesOriginalUri(): void
     {
         $request = $this->run(TrustedHeaders::XForwarded, ['X-Forwarded-For' => '192.0.2.10']);

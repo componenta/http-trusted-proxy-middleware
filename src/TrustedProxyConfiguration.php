@@ -40,6 +40,9 @@ final readonly class TrustedProxyConfiguration
         public bool $trustPrivateNetworks = false,
     ) {
         foreach ($this->trustedProxies as $entry) {
+            if (!is_string($entry)) {
+                throw new \InvalidArgumentException('Trusted proxy entries must be strings.');
+            }
             $this->validateEntry($entry);
         }
     }

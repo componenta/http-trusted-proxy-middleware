@@ -66,7 +66,7 @@ final readonly class TrustedProxyMiddleware implements MiddlewareInterface
                     break;
                 }
             }
-            return [$client, $boundary === null ? [] : $elements[$boundary]];
+            return [$client, $boundary === null ? [] : array_intersect_key($elements[$boundary], ['host' => true, 'proto' => true])];
         }
         if ($this->config->trustedHeaders === TrustedHeaders::Forwarded) {
             return [$peer, []];
